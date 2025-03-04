@@ -1,19 +1,24 @@
 class Sensor {
-    constructor() {
+    constructor(car) {
+        this.car = car;
         this.rayCount = 5;
         this.rayLength = 150;
-        this.raySpread = Math.PI / 4;
+        this.raySpread = Math.PI / 2;
 
         this.rays = [];
         this.readings = [];
     }
 
-    update(x, y, angle, roadBorders, traffic) {
-        this.#castRays(x, y, angle);
+    update(roadBorders, traffic) {
+        this.#castRays();
         this.readings = [];
         for (let i = 0; i < this.rays.length; i++) {
             this.readings.push(
-                this.#getReading(this.rays[i], roadBorders, traffic)
+                this.#getReading(
+                    this.rays[i],
+                    roadBorders,
+                    traffic
+                )
             );
         }
     }
@@ -21,19 +26,17 @@ class Sensor {
     #getReading(ray, roadBorders, traffic) {
         let touches = [];
 
-        roadBorders.forEach(border => {
-            for (let i = 1; i < border.length; i++) {
-                const touch = getIntersection(
-                    ray[0],
-                    ray[1],
-                    border[i - 1],
-                    border[i]
-                );
-                if (touch) {
-                    touches.push(touch);
-                }
+        for (let i = 0; i < roadBorders.length; i++) {
+            const touch = getIntersection(
+                ray[0],
+                ray[1],
+                roadBorders[i][0],
+                roadBorders[i][1]
+            );
+            if (touch) {
+                touches.push(touch);
             }
-        });
+        }
 
         for (let i = 0; i < traffic.length; i++) {
             const poly = traffic[i].polygon;
@@ -59,19 +62,21 @@ class Sensor {
         }
     }
 
-    #castRays(x, y, angle) {
+    #castRays() {
         this.rays = [];
         for (let i = 0; i < this.rayCount; i++) {
             const rayAngle = lerp(
                 this.raySpread / 2,
                 -this.raySpread / 2,
                 this.rayCount == 1 ? 0.5 : i / (this.rayCount - 1)
-            ) + angle;
+            ) + this.car.angle;
 
-            const start = { x, y };
+            const start = { x: this.car.x, y: this.car.y };
             const end = {
-                x: x - Math.sin(rayAngle) * this.rayLength,
-                y: y - Math.cos(rayAngle) * this.rayLength
+                x: this.car.x -
+                    Math.sin(rayAngle) * this.rayLength,
+                y: this.car.y -
+                    Math.cos(rayAngle) * this.rayLength
             };
             this.rays.push([start, end]);
         }
@@ -83,6 +88,7 @@ class Sensor {
             if (this.readings[i]) {
                 end = this.readings[i];
             }
+
             ctx.beginPath();
             ctx.lineWidth = 2;
             ctx.strokeStyle = "yellow";
@@ -95,17 +101,19 @@ class Sensor {
                 end.y
             );
             ctx.stroke();
-            /*
-            ctx.strokeStyle="black";
+
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "black";
             ctx.moveTo(
-               this.rays[i][1].x,
-               this.rays[i][1].y
+                this.rays[i][1].x,
+                this.rays[i][1].y
             );
             ctx.lineTo(
-               end.x,
-               end.y
+                end.x,
+                end.y
             );
-            ctx.stroke();*/
+            ctx.stroke();
         }
     }
 }
